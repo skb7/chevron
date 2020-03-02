@@ -1,0 +1,225 @@
+---
+title: "Correlation Plots"
+author: "Sara Bolf"
+date: "3/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,include=FALSE}
+# read in libraries needed
+library(stats)
+library(ggplot2)
+library(GGally)
+library(corrplot)
+library(ggcorrplot)
+library(PerformanceAnalytics)
+library(tidyr)
+```
+
+```{r}
+# read in training data set 
+data = read.csv("Desktop/D2K/trainLowisEAM.csv",header=TRUE)
+```
+
+```{r}
+data_f = subset(data,data$FAIL==1) # data set corresponding to failures
+
+data_nf = subset(data,data$FAIL==0) # data set corresponding to nonfailures
+```
+
+```{r}
+# random sample of data
+
+smp_size = floor(0.01 * nrow(data))
+
+## set the seed to make your partition reproducible
+
+set.seed(123)
+
+train_ind = sample(seq_len(nrow(data)), size = smp_size)
+
+train = data[train_ind, ]
+```
+
+```{r}
+# remove categorical variables 
+
+remove1 = names(train) %in% c("LAST_SCAN_DATE","Well_Name","ALARM_STATUS","POC_TYPE","Nav_Name","POC_MODE","MTR_STATUS","CONTROL_MODE","FLUID_LEVEL_DATE","ServerPrefixID","evt_date","obj_status","evt_type","evt_mrc","evt_code","evt_desc","evt_object","obj_desc","obj_obtype","obj_code","obj_serialno","evt_status","evt_failure","fal_desc","evt_cause","evt_completed","DEPARTMENT","PUMPING.UNIT.ASSET.NUMBER","PUMPING.UNIT.STATUS")
+
+traincor = train[!remove1] # training data without categorical variables
+
+data_nf2 = data_nf[!remove1] # nonfailures without categorical variables
+
+data_f2 = data_f[!remove1] # failures without categorical variables
+```
+
+```{r}
+# remove irrelevant variables/variables with a lot of NAs
+
+remove2 = names(traincor) %in% c("X","FLOW_LINE_PRESSURE","Unnamed..0","evt_priority","evt_downtimehrs","daystocomplete","WELL.API","FAIL","days_until_next_failure")
+
+traincor2 = traincor[!remove2] # training data without irrelevant variables
+
+```
+
+```{r,include=FALSE}
+# correlation of various continuous variables
+cor(traincor2)
+```
+
+```{r}
+# only include certain variables that have relatively significant correlations with other variables
+
+add1 = c("BEAM_LOAD","PR_HP_F","PR_HP_C","PUMPSIZE","PUMP_DEPTH_MD","CARD_AREA_C","PEAK_SURF_LOAD_C","CARD_AREA_F","MIN_SURF_LOAD_F","STR_LEN","GB_TORQUE","ACTUAL_STROKE_LENGTH","LOAD_SPAN","WATER")
+
+traincor1 = train[add1] 
+
+```
+
+```{r}
+# correlation of relatively significant variables
+cor(traincor1)
+```
+
+
+```{r}
+# correlation plot of all variables 
+
+ggcorrplot(cor(traincor1),p.mat=cor_pmat(traincor1),hc.order=TRUE,type="lower")
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+# correlation plots/matrices for certain variables
+
+a1 = c("BEAM_LOAD","PR_HP_F","PR_HP_C","GB_TORQUE")
+
+plot(train[a1]) 
+
+ggpairs(train[a1]) # correlation matrices
+
+corrplot.mixed(cor(train[a1]), order="hclust", tl.col="black")
+
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+# correlation plots for certain variables
+
+a2 = c("PUMP_DEPTH_MD","PEAK_SURF_LOAD_C","MIN_SURF_LOAD_F","LOAD_SPAN")
+
+plot(train[a2])
+
+ggpairs(train[a2]) # correlation matrices
+
+corrplot.mixed(cor(train[a2]), order="hclust", tl.col="black")
+
+```
+
+
+```{r,message=FALSE,warning=FALSE}
+# correlation plots for certain variables
+
+a3 = c("CARD_AREA_C","CARD_AREA_F","PEAK_SURF_LOAD_C","STR_LEN","ACTUAL_STROKE_LENGTH")
+
+plot(train[a3])
+
+ggpairs(train[a3]) # correlation matrices
+
+corrplot.mixed(cor(train[a3]), order="hclust", tl.col="black")
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+# Plots of certain correlations between predictor variables (for presentation)
+
+# Correlation between Rod Horsepower and Gearbox Torque
+
+ggplot(train,aes(x=PR_HP_C,y=GB_TORQUE))+geom_point()+geom_smooth()+theme_minimal()+xlab("Polished Rod Horsepower (Current)")+ylab("Gearbox Torque")+ggtitle("Correlation Coefficient: 0.70")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+# Correlation between Min. Surface Load (Full) and Weight of fluid
+
+ggplot(train,aes(x=MIN_SURF_LOAD_F,y=LOAD_SPAN))+geom_point()+geom_smooth()+theme_minimal()+xlab("Minimum Surface Load (Full)")+ylab("Weight of Fluid")+ggtitle("Correlation Coefficient: 0.74")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+# Correlation between Card Area (Full) and Actual Stroke Length
+
+ggplot(train,aes(x=CARD_AREA_F,y=ACTUAL_STROKE_LENGTH))+geom_point()+geom_smooth()+theme_minimal()+xlab("Card Area (Full)")+ylab("Actual Stroke Length")+ggtitle("Correlation Coefficient: 0.68")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+# Correlation between Min Surface Load (Full) and Pump Depth
+
+ggplot(train,aes(x=MIN_SURF_LOAD_F,y=PUMP_DEPTH_MD))+geom_point()+geom_smooth()+theme_minimal()+xlab("Minimum Surface Load (Full)")+ylab("Pump Depth")+ggtitle("Correlation Coefficient: 0.67")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+# correlation plots between certain variables for failures
+
+fa1 = c("BEAM_LOAD","PR_HP_F","PR_HP_C","GB_TORQUE","Unnamed..0")
+
+plot(data_f[fa1])
+
+ggpairs(data_f[fa1]) # correlation matrices
+
+corrplot.mixed(cor(data_f[fa1]), order="hclust", tl.col="black")
+
+```
+
+```{r}
+# subset of data where days_until_next_failure does not equal NA
+train_nextfail = subset(traincor,traincor$days_until_next_failure!='NA')
+```
+
+```{r}
+# remove irrelevant variables/variables with a lot of NAs
+
+removenf = names(traincor) %in% c("Unnamed..0","evt_priority","evt_downtimehrs","daystocomplete","WELL.API")
+
+train_nextfail2 = train_nextfail[!removenf]
+
+```
+
+```{r}
+# correlation of days_until_next_failure with certain variables
+cor(train_nextfail2$days_until_next_failure,train_nextfail2[,-1])
+```
+
+```{r,message=FALSE,warning=FALSE}
+# scatterplots of days_until_next_failure with certain variables
+
+add1 = c("PUMP_DEPTH_MD","PEAK_SURF_LOAD_C","PEAK_SURF_LOAD_F","LOAD_SPAN","days_from_start","days_until_next_failure")
+
+train_nextfail3 = train_nextfail2[add1]
+
+train_nextfail3 %>%
+  gather(-days_until_next_failure,key="var",value="value") %>% 
+  ggplot(aes(x=value,y=days_until_next_failure))+facet_wrap(~var,scales="free")+ 
+  geom_point()+
+  stat_smooth()
+
+```
+
+```{r,message=FALSE,warning=FALSE}
+# Correlations between days until next failure with certain variables (for presentation)
+
+# Correlation between days until next failure and pump depth
+
+ggplot(train_nextfail3,aes(x=PUMP_DEPTH_MD,y=days_until_next_failure))+geom_point()+geom_smooth()+theme_minimal()+xlab("Pump Depth")+ylab("Days until next failure")+ggtitle("Correlation Coefficient: -0.102")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+# correlation between days until next failure and weight of fluid
+
+ggplot(train_nextfail3,aes(x=LOAD_SPAN,y=days_until_next_failure))+geom_point()+geom_smooth()+theme_minimal()+xlab("Weight of Fluid")+ylab("Days until next failure")+ggtitle("Correlation Coefficient: -0.109")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+# correlation between peak surface load (current) and days until next failure
+
+ggplot(train_nextfail3,aes(x=PEAK_SURF_LOAD_C,y=days_until_next_failure))+geom_point()+geom_smooth()+theme_minimal()+xlab("Peak Surface Load (Current)")+ylab("Days until Next Failure")+ggtitle("Correlation Coefficient: -0.101")+theme(plot.title=element_text(size=15,face="bold.italic"))
+
+```
+
+
+
+
+
